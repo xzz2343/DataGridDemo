@@ -17,3 +17,6 @@ next-env.d.ts
 # OS
 .DS_Store
 Thumbs.db
+
+# FTP deploy sync state (created by GitHub Actions FTP deploy step)
+.ftp-deploy-sync-state.json
