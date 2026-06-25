@@ -1,5 +1,7 @@
-import { Person } from "../types/person";
+import { Person, PersonRole } from "../types/person";
 import { PEOPLE_DATA } from "../data/people";
+import { supabase, supabaseConfigured } from "./supabase";
+import { getCachedPeople, setCachedPeople } from "./localCache";
 
 export interface FetchPeopleParams {
   start: number;
@@ -13,14 +15,94 @@ export interface FetchPeopleResult {
   totalCount: number;
 }
 
+// Module-level memory cache — populated once per session, reused for every subsequent call.
+let memoryCache: Person[] | null = null;
+
+function mapRow(row: Record<string, unknown>): Person {
+  return {
+    id: row.id as number,
+    firstName: row.first_name as string,
+    lastName: row.last_name as string,
+    email: row.email as string,
+    phone: row.phone as string,
+    office: row.office as string,
+    city: row.city as string,
+    state: row.state as string,
+    role: row.role as PersonRole,
+    title: row.title as string,
+  };
+}
+
+async function fetchAllFromSupabase(): Promise<Person[]> {
+  const BATCH = 1000;
+  const all: Person[] = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("people")
+      .select("*")
+      .order("id")
+      .range(from, from + BATCH - 1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    all.push(...data.map(mapRow));
+    if (data.length < BATCH) break;
+    from += BATCH;
+  }
+
+  return all;
+}
+
+// Returns the full dataset, resolved in priority order:
+//   1. In-memory cache (already loaded this session)
+//   2. IndexedDB   (persisted from a previous session)
+//   3. Supabase    (network fetch, then written to IndexedDB)
+//   4. In-memory generation (fallback when Supabase is not configured)
+async function getAllPeople(): Promise<Person[]> {
+  if (memoryCache) return memoryCache;
+
+  if (typeof window !== "undefined") {
+    try {
+      const idb = await getCachedPeople();
+      if (idb) {
+        memoryCache = idb;
+        return memoryCache;
+      }
+    } catch {
+      // IndexedDB unavailable (e.g. private browsing) — continue
+    }
+  }
+
+  if (supabaseConfigured) {
+    try {
+      const people = await fetchAllFromSupabase();
+      if (typeof window !== "undefined") {
+        try {
+          await setCachedPeople(people);
+        } catch {
+          // Write to IndexedDB failed — not critical
+        }
+      }
+      memoryCache = people;
+      return memoryCache;
+    } catch {
+      // Supabase unreachable — fall through to in-memory generation
+    }
+  }
+
+  memoryCache = PEOPLE_DATA;
+  return memoryCache;
+}
+
 export async function fetchPeople(
   params: FetchPeopleParams
 ): Promise<FetchPeopleResult> {
-  await new Promise((r) => setTimeout(r, 200 + Math.random() * 300));
-
   const { start, size, sorting, globalFilter } = params;
 
-  let filtered: Person[] = PEOPLE_DATA;
+  let filtered: Person[] = await getAllPeople();
 
   if (globalFilter && globalFilter.trim() !== "") {
     const needle = globalFilter.trim().toLowerCase();
@@ -48,9 +130,7 @@ export async function fetchPeople(
           cmp = String(aVal).localeCompare(String(bVal));
         }
 
-        if (cmp !== 0) {
-          return desc ? -cmp : cmp;
-        }
+        if (cmp !== 0) return desc ? -cmp : cmp;
       }
       return 0;
     });

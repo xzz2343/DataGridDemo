@@ -314,6 +314,29 @@ export default function PeopleTable() {
         </span>
       </div>
 
+      {/* ── Initial data-fetch banner ───────────────────────────────────────── */}
+      {isInitialLoading && (
+        <div
+          role="status"
+          aria-label="Loading people directory"
+          className="flex items-center gap-2 text-sm text-indigo-700 dark:text-indigo-300
+                     bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700
+                     rounded-md px-3 py-2"
+        >
+          <svg
+            aria-hidden="true"
+            className="animate-spin h-4 w-4 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span>Fetching from database — may take a moment on first visit…</span>
+        </div>
+      )}
+
       {/* ── Filter + total count ────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
         <label
