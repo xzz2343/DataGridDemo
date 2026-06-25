@@ -27,9 +27,10 @@ jobs:
 
       - name: Deploy to IONOS via SFTP
         env:
-          LFTP_HOST: ${{ secrets.FTP_SERVER }}
           LFTP_USER: ${{ secrets.FTP_USERNAME }}
           LFTP_PASS: ${{ secrets.FTP_PASSWORD }}
         run: |
           sudo apt-get install -y lftp
-          lftp -c "set sftp:connect-program 'ssh -a -x -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'; set net:max-retries 3; set net:timeout 60; open -u $LFTP_USER,$LFTP_PASS sftp://$LFTP_HOST; mirror -R --delete --verbose ./out/ /httpdocs/datagriddemo/; quit"
+          lftp -u "$LFTP_USER","$LFTP_PASS" \
+               -e "set sftp:auto-confirm yes; mirror -R --delete --verbose ./out/ httpdocs/datagriddemo/; quit" \
+               sftp://access-5020765337.webspace-host.com:22
