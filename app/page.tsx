@@ -10,10 +10,10 @@ export default function Home() {
         <ol className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
           <li>
             <a
-              href="https://www.buckshot-consulting.com/portfolio/"
+              href="https://www.buckshot-consulting.com/resume/"
               className="hover:text-gray-900 dark:hover:text-gray-100 underline underline-offset-2"
             >
-              Portfolio
+              Experience
             </a>
           </li>
           <li aria-hidden="true" className="select-none">›</li>
